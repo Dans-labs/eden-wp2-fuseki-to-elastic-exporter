@@ -6,6 +6,13 @@ export {
 export type { CoreConfig } from './core.config';
 
 export {
+  default as elasticsearchConfig,
+  ELASTICSEARCH_CONFIG_KEY,
+  ElasticsearchConfigSchema,
+} from './elasticsearch.config';
+export type { ElasticsearchConfig } from './elasticsearch.config';
+
+export {
   default as fusekiConfig,
   FUSEKI_CONFIG_KEY,
   FusekiConfigSchema,
