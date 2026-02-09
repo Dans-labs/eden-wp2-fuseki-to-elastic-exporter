@@ -11,6 +11,7 @@ describe('Configuration Validation Schemas', () => {
       NODE_ENV: 'development',
       API_PORT: 3000,
       API_PREFIX: 'api',
+      FUSEKI_ENDPOINT: 'http://localhost:3030/ds',
     };
   });
 
@@ -63,6 +64,7 @@ describe('Configuration Validation Schemas', () => {
         const result = EnvironmentConfigSchema.safeParse({
           API_PORT: env.API_PORT,
           API_PREFIX: env.API_PREFIX,
+          FUSEKI_ENDPOINT: env.FUSEKI_ENDPOINT,
         });
 
         expect(result.success).toBe(false);
@@ -74,6 +76,7 @@ describe('Configuration Validation Schemas', () => {
         const result = EnvironmentConfigSchema.parse({
           NODE_ENV: env.NODE_ENV,
           API_PREFIX: env.API_PREFIX,
+          FUSEKI_ENDPOINT: env.FUSEKI_ENDPOINT,
         });
 
         expect(result.API_PORT).toBe(3000);
@@ -140,11 +143,60 @@ describe('Configuration Validation Schemas', () => {
       });
     });
 
+    describe('FUSEKI_ENDPOINT', () => {
+      it('should accept a valid URL', () => {
+        env.FUSEKI_ENDPOINT = 'http://fuseki.example.com:3030/ds';
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.FUSEKI_ENDPOINT).toBe(
+          'http://fuseki.example.com:3030/ds',
+        );
+      });
+
+      it('should accept an HTTPS URL', () => {
+        env.FUSEKI_ENDPOINT = 'https://fuseki.example.com/ds';
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.FUSEKI_ENDPOINT).toBe('https://fuseki.example.com/ds');
+      });
+
+      it('should reject when missing', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          NODE_ENV: env.NODE_ENV,
+          API_PORT: env.API_PORT,
+          API_PREFIX: env.API_PREFIX,
+        });
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an invalid URL', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          FUSEKI_ENDPOINT: 'not-a-url',
+        });
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an empty string', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          FUSEKI_ENDPOINT: '',
+        });
+
+        expect(result.success).toBe(false);
+      });
+    });
+
     describe('API_PREFIX', () => {
       it('should default to "api" when omitted', () => {
         const result = EnvironmentConfigSchema.parse({
           NODE_ENV: env.NODE_ENV,
           API_PORT: env.API_PORT,
+          FUSEKI_ENDPOINT: env.FUSEKI_ENDPOINT,
         });
 
         expect(result.API_PREFIX).toBe('api');
