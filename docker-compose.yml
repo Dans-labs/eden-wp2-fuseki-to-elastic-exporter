@@ -1,0 +1,18 @@
+services:
+  fuseki:
+    build:
+      context: ./docker/fuseki
+      args:
+        JENA_VERSION: '6.0.0'
+    ports:
+      - '3030:3030'
+    environment:
+      JAVA_OPTIONS: '-Xmx2048m -Xms2048m'
+    volumes:
+      - fuseki-data:/fuseki/databases
+      - ./docker/fuseki/config.ttl:/fuseki/config.ttl:ro
+    command: ['--conf', 'config.ttl']
+    restart: unless-stopped
+
+volumes:
+  fuseki-data:
