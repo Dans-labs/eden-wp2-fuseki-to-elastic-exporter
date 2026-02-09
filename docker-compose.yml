@@ -1,5 +1,6 @@
 services:
   fuseki:
+    image: dansknaw/eden-fuseki:latest
     build:
       context: ./docker/fuseki
       args:
@@ -12,6 +13,12 @@ services:
       - fuseki-data:/fuseki/databases
       - ./docker/fuseki/config.ttl:/fuseki/config.ttl:ro
     command: ["--conf", "config.ttl"]
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q --spider http://localhost:3030/$/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     restart: unless-stopped
 
   elasticsearch:
@@ -37,6 +44,87 @@ services:
       retries: 10
     restart: unless-stopped
 
+  postgres:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eden_exporter
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  rdf-delta:
+    image: conjecto/rdf-delta:latest
+    ports:
+      - "1066:1066"
+    volumes:
+      - rdf-delta-data:/var/lib/rdf-delta
+    depends_on:
+      fuseki:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q -O /dev/null http://localhost:1066/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    image: dansknaw/eden-exporter:latest
+    build: .
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      FUSEKI_ENDPOINT: http://fuseki:3030/eden
+      RDF_DELTA_URL: http://rdf-delta:1066
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eden_exporter
+      REDIS_HOST: redis
+    depends_on:
+      fuseki:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rdf-delta:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+
 volumes:
   fuseki-data:
   elasticsearch-data:
+  postgres-data:
+  redis-data:
+  rdf-delta-data:
