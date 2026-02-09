@@ -12,6 +12,8 @@ describe('Configuration Validation Schemas', () => {
       API_PORT: 3000,
       API_PREFIX: 'api',
       FUSEKI_ENDPOINT: 'http://localhost:3030/ds',
+      ELASTICSEARCH_URL: 'http://localhost:9200',
+      ELASTICSEARCH_ALIAS: 'eden-wp2',
     };
   });
 
@@ -61,11 +63,10 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const result = EnvironmentConfigSchema.safeParse({
-          API_PORT: env.API_PORT,
-          API_PREFIX: env.API_PREFIX,
-          FUSEKI_ENDPOINT: env.FUSEKI_ENDPOINT,
-        });
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.NODE_ENV;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
 
         expect(result.success).toBe(false);
       });
@@ -73,11 +74,10 @@ describe('Configuration Validation Schemas', () => {
 
     describe('API_PORT', () => {
       it('should default to 3000 when omitted', () => {
-        const result = EnvironmentConfigSchema.parse({
-          NODE_ENV: env.NODE_ENV,
-          API_PREFIX: env.API_PREFIX,
-          FUSEKI_ENDPOINT: env.FUSEKI_ENDPOINT,
-        });
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.API_PORT;
+
+        const result = EnvironmentConfigSchema.parse(partial);
 
         expect(result.API_PORT).toBe(3000);
       });
@@ -163,11 +163,10 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const result = EnvironmentConfigSchema.safeParse({
-          NODE_ENV: env.NODE_ENV,
-          API_PORT: env.API_PORT,
-          API_PREFIX: env.API_PREFIX,
-        });
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.FUSEKI_ENDPOINT;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
 
         expect(result.success).toBe(false);
       });
@@ -193,11 +192,10 @@ describe('Configuration Validation Schemas', () => {
 
     describe('API_PREFIX', () => {
       it('should default to "api" when omitted', () => {
-        const result = EnvironmentConfigSchema.parse({
-          NODE_ENV: env.NODE_ENV,
-          API_PORT: env.API_PORT,
-          FUSEKI_ENDPOINT: env.FUSEKI_ENDPOINT,
-        });
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.API_PREFIX;
+
+        const result = EnvironmentConfigSchema.parse(partial);
 
         expect(result.API_PREFIX).toBe('api');
       });
@@ -214,6 +212,85 @@ describe('Configuration Validation Schemas', () => {
         const result = EnvironmentConfigSchema.safeParse({
           ...env,
           API_PREFIX: '',
+        });
+
+        expect(result.success).toBe(false);
+      });
+    });
+  });
+
+  describe('ElasticsearchConfigSchema', () => {
+    describe('ELASTICSEARCH_URL', () => {
+      it('should accept a valid HTTP URL', () => {
+        env.ELASTICSEARCH_URL = 'http://elasticsearch.example.com:9200';
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.ELASTICSEARCH_URL).toBe(
+          'http://elasticsearch.example.com:9200',
+        );
+      });
+
+      it('should accept an HTTPS URL', () => {
+        env.ELASTICSEARCH_URL = 'https://elasticsearch.example.com';
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.ELASTICSEARCH_URL).toBe(
+          'https://elasticsearch.example.com',
+        );
+      });
+
+      it('should reject when missing', () => {
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.ELASTICSEARCH_URL;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an invalid URL', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          ELASTICSEARCH_URL: 'not-a-url',
+        });
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an empty string', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          ELASTICSEARCH_URL: '',
+        });
+
+        expect(result.success).toBe(false);
+      });
+    });
+
+    describe('ELASTICSEARCH_ALIAS', () => {
+      it('should accept a valid alias string', () => {
+        env.ELASTICSEARCH_ALIAS = 'my-index-alias';
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.ELASTICSEARCH_ALIAS).toBe('my-index-alias');
+      });
+
+      it('should reject when missing', () => {
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.ELASTICSEARCH_ALIAS;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an empty string', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          ELASTICSEARCH_ALIAS: '',
         });
 
         expect(result.success).toBe(false);
