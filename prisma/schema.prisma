@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client"
-  output   = "./generated/prisma"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -17,7 +17,6 @@ model SyncState {
 model GraphRegistry {
   id            String   @id @default(uuid())
   graphUri      String   @unique
-  contentHash   String
   documentIds   String[]
   documentCount Int      @default(0)
   lastSyncedAt  DateTime @default(now()) @updatedAt
