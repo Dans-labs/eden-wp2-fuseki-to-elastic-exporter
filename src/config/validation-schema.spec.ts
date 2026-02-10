@@ -13,7 +13,7 @@ describe('Configuration Validation Schemas', () => {
       API_PREFIX: 'api',
       FUSEKI_ENDPOINT: 'http://localhost:3030/ds',
       ELASTICSEARCH_URL: 'http://localhost:9200',
-      ELASTICSEARCH_ALIAS: 'eden-wp2',
+      ELASTICSEARCH_ALIAS: 'eden',
     };
   });
 
