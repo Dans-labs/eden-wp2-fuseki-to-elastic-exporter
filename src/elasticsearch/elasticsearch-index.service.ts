@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
+import { errors } from '@elastic/elasticsearch';
 
 @Injectable()
 export class ElasticsearchIndexService {
@@ -7,7 +8,7 @@ export class ElasticsearchIndexService {
 
   constructor(private readonly esService: ElasticsearchService) {}
 
-  async ensureIndex(indexName: string): Promise<void> {
+  async ensureIndex(indexName: string, aliasName?: string): Promise<void> {
     const exists = await this.esService.indices.exists({ index: indexName });
 
     if (!exists) {
@@ -39,6 +40,40 @@ export class ElasticsearchIndexService {
           ],
         },
       });
+    }
+
+    if (aliasName) {
+      await this.ensureAlias(indexName, aliasName);
+    }
+  }
+
+  private async ensureAlias(
+    indexName: string,
+    aliasName: string,
+  ): Promise<void> {
+    try {
+      const aliasResponse = await this.esService.indices.getAlias({
+        name: aliasName,
+      });
+      const pointsToThisIndex = indexName in aliasResponse;
+
+      if (!pointsToThisIndex) {
+        this.logger.warn(
+          `Alias "${aliasName}" already exists but does not point to "${indexName}". Use swapAlias to update it.`,
+        );
+      }
+    } catch (error) {
+      if (error instanceof errors.ResponseError && error.statusCode === 404) {
+        await this.esService.indices.putAlias({
+          index: indexName,
+          name: aliasName,
+        });
+        this.logger.log(
+          `Created alias "${aliasName}" pointing to "${indexName}"`,
+        );
+        return;
+      }
+      throw error;
     }
   }
 
@@ -74,5 +109,77 @@ export class ElasticsearchIndexService {
     this.logger.log(
       `Indexed ${documents.length} documents into "${indexName}"`,
     );
+  }
+
+  async bulkDelete(indexName: string, documentIds: string[]): Promise<void> {
+    if (documentIds.length === 0) {
+      return;
+    }
+
+    const operations = documentIds.flatMap((id) => [
+      { delete: { _index: indexName, _id: id } },
+    ]);
+
+    const response = await this.esService.bulk({ operations });
+
+    if (response.errors) {
+      const errorItems = response.items.filter((item) => item.delete?.error);
+      this.logger.warn(
+        `Bulk deletion encountered ${errorItems.length} errors in "${indexName}"`,
+      );
+      for (const item of errorItems) {
+        this.logger.warn(
+          `Failed to delete document ${item.delete?._id}: ${JSON.stringify(item.delete?.error)}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Deleted ${documentIds.length} documents from "${indexName}"`,
+    );
+  }
+
+  async swapAlias(aliasName: string, newIndexName: string): Promise<void> {
+    let oldIndices: string[] = [];
+
+    try {
+      const aliasResponse = await this.esService.indices.getAlias({
+        name: aliasName,
+      });
+      oldIndices = Object.keys(aliasResponse);
+    } catch (error) {
+      if (
+        !(error instanceof errors.ResponseError && error.statusCode === 404)
+      ) {
+        throw error;
+      }
+    }
+
+    const actions: Array<
+      | { remove: { index: string; alias: string } }
+      | { add: { index: string; alias: string } }
+    > = [];
+
+    for (const oldIndex of oldIndices) {
+      actions.push({ remove: { index: oldIndex, alias: aliasName } });
+    }
+    actions.push({ add: { index: newIndexName, alias: aliasName } });
+
+    await this.esService.indices.updateAliases({ actions });
+
+    if (oldIndices.length > 0) {
+      this.logger.log(
+        `Swapped alias "${aliasName}" from [${oldIndices.join(', ')}] to "${newIndexName}"`,
+      );
+    } else {
+      this.logger.log(
+        `Created alias "${aliasName}" pointing to "${newIndexName}"`,
+      );
+    }
+  }
+
+  async deleteIndex(indexName: string): Promise<void> {
+    await this.esService.indices.delete({ index: indexName });
+    this.logger.log(`Deleted index "${indexName}"`);
   }
 }

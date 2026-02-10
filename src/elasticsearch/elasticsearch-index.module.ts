@@ -13,11 +13,19 @@ import { ElasticsearchIndexService } from './elasticsearch-index.service';
         const esConfig = configService.get<ElasticsearchConfig>(
           ELASTICSEARCH_CONFIG_KEY,
         );
-        return { node: esConfig!.ELASTICSEARCH_URL };
+        return {
+          node: esConfig!.ELASTICSEARCH_URL,
+          ...(esConfig!.ELASTICSEARCH_USERNAME && {
+            auth: {
+              username: esConfig!.ELASTICSEARCH_USERNAME,
+              password: esConfig!.ELASTICSEARCH_PASSWORD ?? '',
+            },
+          }),
+        };
       },
     }),
   ],
   providers: [ElasticsearchIndexService],
-  exports: [ElasticsearchIndexService],
+  exports: [ElasticsearchModule, ElasticsearchIndexService],
 })
 export class ElasticsearchIndexModule {}
