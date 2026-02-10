@@ -8,6 +8,10 @@ import {
   fusekiConfig,
   EnvironmentConfigSchema,
 } from './config';
+import { FusekiModule } from './fuseki/fuseki.module';
+import { JsonldModule } from './jsonld/jsonld.module';
+import { ElasticsearchIndexModule } from './elasticsearch/elasticsearch-index.module';
+import { ExportModule } from './export/export.module';
 
 @Module({
   imports: [
@@ -17,6 +21,10 @@ import {
       load: [coreConfig, fusekiConfig, elasticsearchConfig],
       validate: (env) => EnvironmentConfigSchema.parse(env),
     }),
+    FusekiModule,
+    JsonldModule,
+    ElasticsearchIndexModule,
+    ExportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
