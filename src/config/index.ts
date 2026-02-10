@@ -33,5 +33,29 @@ export {
 } from './database.config';
 export type { DatabaseConfig } from './database.config';
 
+export {
+  default as syncConfig,
+  SYNC_CONFIG_KEY,
+  SyncConfigSchema,
+} from './sync.config';
+export type { SyncConfig } from './sync.config';
+
+export {
+  default as redisConfig,
+  REDIS_CONFIG_KEY,
+  RedisConfigSchema,
+} from './redis.config';
+export type { RedisConfig } from './redis.config';
+
+export {
+  default as rdfDeltaConfig,
+  RDF_DELTA_CONFIG_KEY,
+  RdfDeltaConfigSchema,
+} from './rdf-delta.config';
+export type { RdfDeltaConfig } from './rdf-delta.config';
+
 export { EnvironmentConfigSchema } from './validation-schema';
-export type { EnvironmentConfigVariables } from './validation-schema';
+export type {
+  EnvironmentConfigVariables,
+  EnvironmentConfigInput,
+} from './validation-schema';

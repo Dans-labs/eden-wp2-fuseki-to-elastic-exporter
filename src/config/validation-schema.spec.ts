@@ -1,10 +1,10 @@
 import {
   EnvironmentConfigSchema,
-  EnvironmentConfigVariables,
+  EnvironmentConfigInput,
 } from './validation-schema';
 
 describe('Configuration Validation Schemas', () => {
-  let env: EnvironmentConfigVariables;
+  let env: EnvironmentConfigInput;
 
   beforeEach(() => {
     env = {
@@ -16,6 +16,11 @@ describe('Configuration Validation Schemas', () => {
       ELASTICSEARCH_ALIAS: 'eden',
       AUTH_API_TOKEN: 'a'.repeat(32),
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/eden',
+      SYNC_CRON: '*/10 * * * *',
+      SYNC_ENABLED: 'true',
+      CHANGE_DETECTION_MODE: 'polling',
+      REDIS_HOST: 'localhost',
+      REDIS_PORT: 6379,
     };
   });
 
@@ -65,7 +70,7 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.NODE_ENV;
 
         const result = EnvironmentConfigSchema.safeParse(partial);
@@ -76,7 +81,7 @@ describe('Configuration Validation Schemas', () => {
 
     describe('API_PORT', () => {
       it('should default to 3000 when omitted', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.API_PORT;
 
         const result = EnvironmentConfigSchema.parse(partial);
@@ -165,7 +170,7 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.FUSEKI_ENDPOINT;
 
         const result = EnvironmentConfigSchema.safeParse(partial);
@@ -194,7 +199,7 @@ describe('Configuration Validation Schemas', () => {
 
     describe('API_PREFIX', () => {
       it('should default to "api" when omitted', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.API_PREFIX;
 
         const result = EnvironmentConfigSchema.parse(partial);
@@ -240,7 +245,7 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.AUTH_API_TOKEN;
 
         const result = EnvironmentConfigSchema.safeParse(partial);
@@ -291,7 +296,7 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.ELASTICSEARCH_URL;
 
         const result = EnvironmentConfigSchema.safeParse(partial);
@@ -328,7 +333,7 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.ELASTICSEARCH_ALIAS;
 
         const result = EnvironmentConfigSchema.safeParse(partial);
@@ -360,7 +365,7 @@ describe('Configuration Validation Schemas', () => {
       });
 
       it('should reject when missing', () => {
-        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
         delete partial.DATABASE_URL;
 
         const result = EnvironmentConfigSchema.safeParse(partial);
@@ -384,6 +389,116 @@ describe('Configuration Validation Schemas', () => {
         });
 
         expect(result.success).toBe(false);
+      });
+    });
+  });
+
+  describe('SyncConfigSchema', () => {
+    describe('SYNC_CRON', () => {
+      it('should default to every 10 minutes when omitted', () => {
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
+        delete partial.SYNC_CRON;
+
+        const result = EnvironmentConfigSchema.parse(partial);
+
+        expect(result.SYNC_CRON).toBe('*/10 * * * *');
+      });
+    });
+
+    describe('CHANGE_DETECTION_MODE', () => {
+      it('should accept "polling"', () => {
+        const result = EnvironmentConfigSchema.parse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'polling',
+        });
+
+        expect(result.CHANGE_DETECTION_MODE).toBe('polling');
+      });
+
+      it('should accept "delta" when RDF Delta vars are provided', () => {
+        const result = EnvironmentConfigSchema.parse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'delta',
+          RDF_DELTA_URL: 'http://localhost:1066',
+          RDF_DELTA_DATASOURCE: 'eden',
+        });
+
+        expect(result.CHANGE_DETECTION_MODE).toBe('delta');
+      });
+
+      it('should reject "delta" when RDF Delta vars are missing', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'delta',
+        });
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an invalid value', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'invalid',
+        });
+
+        expect(result.success).toBe(false);
+      });
+    });
+  });
+
+  describe('RedisConfigSchema', () => {
+    describe('REDIS_HOST', () => {
+      it('should default to "localhost" when omitted', () => {
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
+        delete partial.REDIS_HOST;
+
+        const result = EnvironmentConfigSchema.parse(partial);
+
+        expect(result.REDIS_HOST).toBe('localhost');
+      });
+    });
+
+    describe('REDIS_PORT', () => {
+      it('should default to 6379 when omitted', () => {
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
+        delete partial.REDIS_PORT;
+
+        const result = EnvironmentConfigSchema.parse(partial);
+
+        expect(result.REDIS_PORT).toBe(6379);
+      });
+
+      it('should coerce a string to a number', () => {
+        const result = EnvironmentConfigSchema.parse({
+          ...env,
+          REDIS_PORT: '6380',
+        });
+
+        expect(result.REDIS_PORT).toBe(6380);
+      });
+    });
+  });
+
+  describe('RdfDeltaConfigSchema', () => {
+    describe('RDF_DELTA_URL', () => {
+      it('should accept a valid URL', () => {
+        const result = EnvironmentConfigSchema.parse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'delta',
+          RDF_DELTA_URL: 'http://localhost:1066',
+          RDF_DELTA_DATASOURCE: 'eden',
+        });
+
+        expect(result.RDF_DELTA_URL).toBe('http://localhost:1066');
+      });
+
+      it('should be optional when mode is polling', () => {
+        const result = EnvironmentConfigSchema.parse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'polling',
+        });
+
+        expect(result.RDF_DELTA_URL).toBeUndefined();
       });
     });
   });
