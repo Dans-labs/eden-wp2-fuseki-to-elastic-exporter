@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model SyncState {
+  id               String   @id @default("singleton")
+  lastPatchVersion Int      @default(0)
+  lastSyncedAt     DateTime @default(now()) @updatedAt
+  activeIndexName  String?
+}
+
+model GraphRegistry {
+  id            String   @id @default(uuid())
+  graphUri      String   @unique
+  contentHash   String
+  documentIds   String[]
+  documentCount Int      @default(0)
+  lastSyncedAt  DateTime @default(now()) @updatedAt
+  createdAt     DateTime @default(now())
+}

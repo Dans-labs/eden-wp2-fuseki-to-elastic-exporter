@@ -26,5 +26,12 @@ export {
 } from './fuseki.config';
 export type { FusekiConfig } from './fuseki.config';
 
+export {
+  default as databaseConfig,
+  DATABASE_CONFIG_KEY,
+  DatabaseConfigSchema,
+} from './database.config';
+export type { DatabaseConfig } from './database.config';
+
 export { EnvironmentConfigSchema } from './validation-schema';
 export type { EnvironmentConfigVariables } from './validation-schema';

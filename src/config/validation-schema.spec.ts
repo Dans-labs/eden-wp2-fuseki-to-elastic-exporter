@@ -15,6 +15,7 @@ describe('Configuration Validation Schemas', () => {
       ELASTICSEARCH_URL: 'http://localhost:9200',
       ELASTICSEARCH_ALIAS: 'eden',
       AUTH_API_TOKEN: 'a'.repeat(32),
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/eden',
     };
   });
 
@@ -339,6 +340,47 @@ describe('Configuration Validation Schemas', () => {
         const result = EnvironmentConfigSchema.safeParse({
           ...env,
           ELASTICSEARCH_ALIAS: '',
+        });
+
+        expect(result.success).toBe(false);
+      });
+    });
+  });
+
+  describe('DatabaseConfigSchema', () => {
+    describe('DATABASE_URL', () => {
+      it('should accept a valid PostgreSQL URL', () => {
+        env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/eden';
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.DATABASE_URL).toBe(
+          'postgresql://postgres:postgres@localhost:5432/eden',
+        );
+      });
+
+      it('should reject when missing', () => {
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.DATABASE_URL;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an invalid URL', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          DATABASE_URL: 'not-a-url',
+        });
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an empty string', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          DATABASE_URL: '',
         });
 
         expect(result.success).toBe(false);
