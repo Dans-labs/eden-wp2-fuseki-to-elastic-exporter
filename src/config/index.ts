@@ -1,4 +1,11 @@
 export {
+  default as authConfig,
+  AUTH_CONFIG_KEY,
+  AuthConfigSchema,
+} from './auth.config';
+export type { AuthConfig } from './auth.config';
+
+export {
   default as coreConfig,
   CORE_CONFIG_KEY,
   CoreConfigSchema,

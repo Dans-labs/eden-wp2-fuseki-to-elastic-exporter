@@ -14,6 +14,7 @@ describe('Configuration Validation Schemas', () => {
       FUSEKI_ENDPOINT: 'http://localhost:3030/ds',
       ELASTICSEARCH_URL: 'http://localhost:9200',
       ELASTICSEARCH_ALIAS: 'eden',
+      AUTH_API_TOKEN: 'a'.repeat(32),
     };
   });
 
@@ -212,6 +213,53 @@ describe('Configuration Validation Schemas', () => {
         const result = EnvironmentConfigSchema.safeParse({
           ...env,
           API_PREFIX: '',
+        });
+
+        expect(result.success).toBe(false);
+      });
+    });
+  });
+
+  describe('AuthConfigSchema', () => {
+    describe('AUTH_API_TOKEN', () => {
+      it('should accept a valid token of 32 characters', () => {
+        env.AUTH_API_TOKEN = 'a'.repeat(32);
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.AUTH_API_TOKEN).toBe('a'.repeat(32));
+      });
+
+      it('should accept a token longer than 32 characters', () => {
+        env.AUTH_API_TOKEN = 'a'.repeat(64);
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.AUTH_API_TOKEN).toBe('a'.repeat(64));
+      });
+
+      it('should reject when missing', () => {
+        const partial: Partial<EnvironmentConfigVariables> = { ...env };
+        delete partial.AUTH_API_TOKEN;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject a token shorter than 32 characters', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          AUTH_API_TOKEN: 'short',
+        });
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an empty string', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          AUTH_API_TOKEN: '',
         });
 
         expect(result.success).toBe(false);
