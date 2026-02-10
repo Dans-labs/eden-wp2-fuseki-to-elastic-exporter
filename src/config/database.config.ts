@@ -2,7 +2,7 @@ import { registerAs } from '@nestjs/config';
 import z from 'zod';
 
 export const DatabaseConfigSchema = z.object({
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
 });
 
 export const DATABASE_CONFIG_KEY = Symbol('app:config:database');

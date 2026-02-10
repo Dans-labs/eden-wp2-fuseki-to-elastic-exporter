@@ -6,15 +6,13 @@ import { ElasticsearchConfigSchema } from './elasticsearch.config';
 import { FusekiConfigSchema } from './fuseki.config';
 import { SyncConfigSchema } from './sync.config';
 import { RedisConfigSchema } from './redis.config';
-import { RdfDeltaConfigSchema } from './rdf-delta.config';
 
 const BaseSchema = CoreConfigSchema.merge(FusekiConfigSchema)
   .merge(ElasticsearchConfigSchema)
   .merge(AuthConfigSchema)
   .merge(DatabaseConfigSchema)
   .merge(SyncConfigSchema)
-  .merge(RedisConfigSchema)
-  .merge(RdfDeltaConfigSchema);
+  .merge(RedisConfigSchema);
 
 // When CHANGE_DETECTION_MODE is 'delta', RDF_DELTA_URL and
 // RDF_DELTA_DATASOURCE become required.

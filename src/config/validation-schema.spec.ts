@@ -197,6 +197,28 @@ describe('Configuration Validation Schemas', () => {
       });
     });
 
+    describe('RDF_DELTA_URL', () => {
+      it('should accept a valid URL', () => {
+        const result = EnvironmentConfigSchema.parse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'delta',
+          RDF_DELTA_URL: 'http://localhost:1066',
+          RDF_DELTA_DATASOURCE: 'eden',
+        });
+
+        expect(result.RDF_DELTA_URL).toBe('http://localhost:1066');
+      });
+
+      it('should be optional when mode is polling', () => {
+        const result = EnvironmentConfigSchema.parse({
+          ...env,
+          CHANGE_DETECTION_MODE: 'polling',
+        });
+
+        expect(result.RDF_DELTA_URL).toBeUndefined();
+      });
+    });
+
     describe('API_PREFIX', () => {
       it('should default to "api" when omitted', () => {
         const partial: Partial<EnvironmentConfigInput> = { ...env };
@@ -475,30 +497,6 @@ describe('Configuration Validation Schemas', () => {
         });
 
         expect(result.REDIS_PORT).toBe(6380);
-      });
-    });
-  });
-
-  describe('RdfDeltaConfigSchema', () => {
-    describe('RDF_DELTA_URL', () => {
-      it('should accept a valid URL', () => {
-        const result = EnvironmentConfigSchema.parse({
-          ...env,
-          CHANGE_DETECTION_MODE: 'delta',
-          RDF_DELTA_URL: 'http://localhost:1066',
-          RDF_DELTA_DATASOURCE: 'eden',
-        });
-
-        expect(result.RDF_DELTA_URL).toBe('http://localhost:1066');
-      });
-
-      it('should be optional when mode is polling', () => {
-        const result = EnvironmentConfigSchema.parse({
-          ...env,
-          CHANGE_DETECTION_MODE: 'polling',
-        });
-
-        expect(result.RDF_DELTA_URL).toBeUndefined();
       });
     });
   });

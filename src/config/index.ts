@@ -47,13 +47,6 @@ export {
 } from './redis.config';
 export type { RedisConfig } from './redis.config';
 
-export {
-  default as rdfDeltaConfig,
-  RDF_DELTA_CONFIG_KEY,
-  RdfDeltaConfigSchema,
-} from './rdf-delta.config';
-export type { RdfDeltaConfig } from './rdf-delta.config';
-
 export { EnvironmentConfigSchema } from './validation-schema';
 export type {
   EnvironmentConfigVariables,

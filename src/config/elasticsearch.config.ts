@@ -5,7 +5,7 @@ export const ElasticsearchConfigSchema = z.object({
   /**
    * The URL of the Elasticsearch instance to index documents into.
    */
-  ELASTICSEARCH_URL: z.string().url(),
+  ELASTICSEARCH_URL: z.url(),
 
   /**
    * The Elasticsearch index alias the application targets.
