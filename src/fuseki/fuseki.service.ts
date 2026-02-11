@@ -50,4 +50,40 @@ export class FusekiService {
 
     return (await response.json()) as object;
   }
+
+  // Fetches specific resources from a graph using a CONSTRUCT query.
+  // Includes one level of blank node properties so the flatten pipeline can embed them.
+  async fetchResources(
+    graphUri: string,
+    subjectUris: string[],
+  ): Promise<object> {
+    const valuesClause = subjectUris.map((uri) => `<${uri}>`).join(' ');
+    const query = `
+      CONSTRUCT { ?s ?p ?o . ?bnode ?bp ?bo }
+      WHERE {
+        GRAPH <${graphUri}> {
+          VALUES ?s { ${valuesClause} }
+          ?s ?p ?o .
+          OPTIONAL {
+            FILTER(isBlank(?o))
+            BIND(?o AS ?bnode)
+            ?bnode ?bp ?bo .
+          }
+        }
+      }
+    `;
+
+    const url = `${this.endpoint}/sparql?query=${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
+      headers: { Accept: 'application/ld+json' },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch resources from graph ${graphUri}: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    return (await response.json()) as object;
+  }
 }

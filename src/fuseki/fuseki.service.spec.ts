@@ -128,4 +128,66 @@ describe('FusekiService', () => {
       );
     });
   });
+
+  describe('fetchResources', () => {
+    const graphUri = 'http://example.org/graph1';
+    const subjectUris = [
+      'http://example.org/resource/1',
+      'http://example.org/resource/2',
+    ];
+
+    it('should return parsed JSON-LD from CONSTRUCT query', async () => {
+      const jsonLd = {
+        '@context': {},
+        '@graph': [
+          { '@id': 'http://example.org/resource/1', title: 'R1' },
+          { '@id': 'http://example.org/resource/2', title: 'R2' },
+        ],
+      };
+
+      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(jsonLd),
+      } as Response);
+
+      const result = await service.fetchResources(graphUri, subjectUris);
+
+      expect(result).toEqual(jsonLd);
+    });
+
+    it('should call the SPARQL endpoint with a CONSTRUCT query', async () => {
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as Response);
+
+      await service.fetchResources(graphUri, subjectUris);
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`${fusekiEndpoint}/sparql?query=`),
+        expect.objectContaining({
+          headers: { Accept: 'application/ld+json' },
+        }),
+      );
+      const url = fetchSpy.mock.calls[0][0] as string;
+      const query = decodeURIComponent(url.split('query=')[1]);
+      expect(query).toContain('CONSTRUCT');
+      expect(query).toContain('<http://example.org/resource/1>');
+      expect(query).toContain('<http://example.org/resource/2>');
+    });
+
+    it('should throw when the response is not ok', async () => {
+      jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as Response);
+
+      await expect(
+        service.fetchResources(graphUri, subjectUris),
+      ).rejects.toThrow(
+        `Failed to fetch resources from graph ${graphUri}: 500 Internal Server Error`,
+      );
+    });
+  });
 });
