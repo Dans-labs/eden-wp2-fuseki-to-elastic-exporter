@@ -1,31 +1,31 @@
 import { TestBed } from '@suites/unit';
 import { ExportController } from './export.controller';
-import { ExportService } from './export.service';
+import { ReindexService } from '../reindex/reindex.service';
 
 describe('ExportController', () => {
   let controller: ExportController;
-  let exportService: ExportService;
+  let reindexService: ReindexService;
 
   beforeEach(async () => {
     const { unit, unitRef } =
       await TestBed.solitary(ExportController).compile();
 
     controller = unit;
-    exportService = unitRef.get(ExportService) as unknown as ExportService;
+    reindexService = unitRef.get(ReindexService) as unknown as ReindexService;
   });
 
   describe('triggerExport', () => {
-    it('should call exportAll and return a success message', async () => {
-      (exportService.exportAll as jest.Mock).mockResolvedValueOnce(undefined);
+    it('should call reindexAll and return a success message', async () => {
+      (reindexService.reindexAll as jest.Mock).mockResolvedValueOnce(undefined);
 
       const result = await controller.triggerExport();
 
-      expect(exportService.exportAll).toHaveBeenCalled();
-      expect(result).toEqual({ message: 'Export completed successfully' });
+      expect(reindexService.reindexAll).toHaveBeenCalled();
+      expect(result).toEqual({ message: 'Reindex completed successfully' });
     });
 
-    it('should propagate errors from exportAll', async () => {
-      (exportService.exportAll as jest.Mock).mockRejectedValueOnce(
+    it('should propagate errors from reindexAll', async () => {
+      (reindexService.reindexAll as jest.Mock).mockRejectedValueOnce(
         new Error('Fuseki is down'),
       );
 

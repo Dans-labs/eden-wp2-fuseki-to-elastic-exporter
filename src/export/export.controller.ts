@@ -1,15 +1,15 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { AuthTokenGuard } from '../auth/auth-token.guard';
-import { ExportService } from './export.service';
+import { ReindexService } from '../reindex/reindex.service';
 
 @Controller('export')
 @UseGuards(AuthTokenGuard)
 export class ExportController {
-  constructor(private readonly exportService: ExportService) {}
+  constructor(private readonly reindexService: ReindexService) {}
 
   @Get()
   async triggerExport(): Promise<{ message: string }> {
-    await this.exportService.exportAll();
-    return { message: 'Export completed successfully' };
+    await this.reindexService.reindexAll();
+    return { message: 'Reindex completed successfully' };
   }
 }
