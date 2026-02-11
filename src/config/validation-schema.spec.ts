@@ -12,13 +12,12 @@ describe('Configuration Validation Schemas', () => {
       API_PORT: 3000,
       API_PREFIX: 'api',
       FUSEKI_ENDPOINT: 'http://localhost:3030/ds',
+      RDF_DELTA_URL: 'http://localhost:1066',
+      RDF_DELTA_DATASOURCE: 'eden',
       ELASTICSEARCH_URL: 'http://localhost:9200',
       ELASTICSEARCH_ALIAS: 'eden',
       AUTH_API_TOKEN: 'a'.repeat(32),
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/eden',
-      SYNC_CRON: '*/10 * * * *',
-      SYNC_ENABLED: 'true',
-      CHANGE_DETECTION_MODE: 'polling',
       REDIS_HOST: 'localhost',
       REDIS_PORT: 6379,
     };
@@ -199,23 +198,57 @@ describe('Configuration Validation Schemas', () => {
 
     describe('RDF_DELTA_URL', () => {
       it('should accept a valid URL', () => {
-        const result = EnvironmentConfigSchema.parse({
-          ...env,
-          CHANGE_DETECTION_MODE: 'delta',
-          RDF_DELTA_URL: 'http://localhost:1066',
-          RDF_DELTA_DATASOURCE: 'eden',
-        });
+        env.RDF_DELTA_URL = 'http://localhost:1066';
+
+        const result = EnvironmentConfigSchema.parse(env);
 
         expect(result.RDF_DELTA_URL).toBe('http://localhost:1066');
       });
 
-      it('should be optional when mode is polling', () => {
-        const result = EnvironmentConfigSchema.parse({
+      it('should reject when missing', () => {
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
+        delete partial.RDF_DELTA_URL;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an invalid URL', () => {
+        const result = EnvironmentConfigSchema.safeParse({
           ...env,
-          CHANGE_DETECTION_MODE: 'polling',
+          RDF_DELTA_URL: 'not-a-url',
         });
 
-        expect(result.RDF_DELTA_URL).toBeUndefined();
+        expect(result.success).toBe(false);
+      });
+    });
+
+    describe('RDF_DELTA_DATASOURCE', () => {
+      it('should accept a valid string', () => {
+        env.RDF_DELTA_DATASOURCE = 'eden';
+
+        const result = EnvironmentConfigSchema.parse(env);
+
+        expect(result.RDF_DELTA_DATASOURCE).toBe('eden');
+      });
+
+      it('should reject when missing', () => {
+        const partial: Partial<EnvironmentConfigInput> = { ...env };
+        delete partial.RDF_DELTA_DATASOURCE;
+
+        const result = EnvironmentConfigSchema.safeParse(partial);
+
+        expect(result.success).toBe(false);
+      });
+
+      it('should reject an empty string', () => {
+        const result = EnvironmentConfigSchema.safeParse({
+          ...env,
+          RDF_DELTA_DATASOURCE: '',
+        });
+
+        expect(result.success).toBe(false);
       });
     });
 
@@ -408,59 +441,6 @@ describe('Configuration Validation Schemas', () => {
         const result = EnvironmentConfigSchema.safeParse({
           ...env,
           DATABASE_URL: '',
-        });
-
-        expect(result.success).toBe(false);
-      });
-    });
-  });
-
-  describe('SyncConfigSchema', () => {
-    describe('SYNC_CRON', () => {
-      it('should default to every 10 minutes when omitted', () => {
-        const partial: Partial<EnvironmentConfigInput> = { ...env };
-        delete partial.SYNC_CRON;
-
-        const result = EnvironmentConfigSchema.parse(partial);
-
-        expect(result.SYNC_CRON).toBe('*/10 * * * *');
-      });
-    });
-
-    describe('CHANGE_DETECTION_MODE', () => {
-      it('should accept "polling"', () => {
-        const result = EnvironmentConfigSchema.parse({
-          ...env,
-          CHANGE_DETECTION_MODE: 'polling',
-        });
-
-        expect(result.CHANGE_DETECTION_MODE).toBe('polling');
-      });
-
-      it('should accept "delta" when RDF Delta vars are provided', () => {
-        const result = EnvironmentConfigSchema.parse({
-          ...env,
-          CHANGE_DETECTION_MODE: 'delta',
-          RDF_DELTA_URL: 'http://localhost:1066',
-          RDF_DELTA_DATASOURCE: 'eden',
-        });
-
-        expect(result.CHANGE_DETECTION_MODE).toBe('delta');
-      });
-
-      it('should reject "delta" when RDF Delta vars are missing', () => {
-        const result = EnvironmentConfigSchema.safeParse({
-          ...env,
-          CHANGE_DETECTION_MODE: 'delta',
-        });
-
-        expect(result.success).toBe(false);
-      });
-
-      it('should reject an invalid value', () => {
-        const result = EnvironmentConfigSchema.safeParse({
-          ...env,
-          CHANGE_DETECTION_MODE: 'invalid',
         });
 
         expect(result.success).toBe(false);

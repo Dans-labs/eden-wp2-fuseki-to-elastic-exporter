@@ -34,13 +34,6 @@ export {
 export type { DatabaseConfig } from './database.config';
 
 export {
-  default as syncConfig,
-  SYNC_CONFIG_KEY,
-  SyncConfigSchema,
-} from './sync.config';
-export type { SyncConfig } from './sync.config';
-
-export {
   default as redisConfig,
   REDIS_CONFIG_KEY,
   RedisConfigSchema,
