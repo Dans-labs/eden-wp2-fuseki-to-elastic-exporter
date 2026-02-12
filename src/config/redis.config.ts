@@ -4,6 +4,7 @@ import z from 'zod';
 export const RedisConfigSchema = z.object({
   REDIS_HOST: z.string().min(1).default('localhost'),
   REDIS_PORT: z.coerce.number().min(1).max(65535).default(6379),
+  REDIS_PASSWORD: z.string().optional(),
 });
 
 export const REDIS_CONFIG_KEY = Symbol('app:config:redis');
@@ -15,5 +16,6 @@ export default registerAs(
     RedisConfigSchema.parse({
       REDIS_HOST: process.env.REDIS_HOST,
       REDIS_PORT: process.env.REDIS_PORT,
+      REDIS_PASSWORD: process.env.REDIS_PASSWORD,
     }),
 );
