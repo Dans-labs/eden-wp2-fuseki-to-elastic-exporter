@@ -1,98 +1,106 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# EDEN Fuseki-to-Elastic Exporter
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Syncs RDF data from Apache Jena Fuseki to Elasticsearch. Detects changes via RDF Delta, syncs affected graphs incrementally every 10 minutes, and falls back to a full blue-green reindex when patch gaps are detected. Part of the EDEN WP2 project.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Note: the startup of the project includes **_NO_** dummy data you will have to ingest that yourself into fuseki.
 
-## Description
+## Architecture
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+![Architecture](docs/architecture.png)
 
-## Project setup
+**How it works:**
 
-```bash
-$ pnpm install
-```
+1. The scheduler polls RDF Delta for new patches since the last known version
+2. Patches are parsed to extract which graphs (and optionally which subjects) changed
+3. Affected graphs are enqueued as jobs in a Bull queue
+4. Each job fetches the graph from Fuseki as JSON-LD, flattens it, and indexes the documents into Elasticsearch
+5. If a patch gap is detected (e.g. delta server was reset), a full reindex is triggered automatically
+6. Full reindex uses blue-green index swapping for zero downtime
 
-## Compile and run the project
+## Stack
 
-```bash
-# development
-$ pnpm run start
+| Service       | Image                    | Role                                 |
+| ------------- | ------------------------ | ------------------------------------ |
+| Fuseki        | `dansknaw/eden-fuseki`   | SPARQL triplestore (source of truth) |
+| Elasticsearch | `elasticsearch:9.3.0`    | Search index (target)                |
+| RDF Delta     | `conjecto/rdf-delta`     | Change detection via patch log       |
+| PostgreSQL    | `postgres:17`            | Sync state + graph registry          |
+| Redis         | `redis:7`                | Job queue backend (Bull)             |
+| App           | `dansknaw/eden-exporter` | This application                     |
 
-# watch mode
-$ pnpm run start:dev
+## Getting Started
 
-# production mode
-$ pnpm run start:prod
-```
-
-## Run tests
+To run the application locally you can do the following:
 
 ```bash
-# unit tests
-$ pnpm run test
+# start the entire stack including the app container
+make start
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+# stop everything
+make stop
 ```
 
-## Deployment
+The `app` service's `docker-compose.yml` environment block overrides all localhost URLs with Docker network hostnames automatically.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Local development setup
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Prerequisites: Docker, pnpm.
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+# first-time setup (copies .env.example to .env, installs deps)
+make setup
+
+# start infrastructure (fuseki, elasticsearch, postgres, redis, rdf-delta) + run migrations
+make start:dev
+
+# start the app in watch mode
+pnpm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The app runs on `http://localhost:3000`.
 
-## Resources
+## API
 
-Check out a few resources that may come in handy when working with NestJS:
+| Method | Route                     | Auth         | Description                 |
+| ------ | ------------------------- | ------------ | --------------------------- |
+| `GET`  | `/api`                    | -            | Health check                |
+| `POST` | `/api/:index/_search`     | -            | Elasticsearch search proxy  |
+| `GET`  | `/api/:index/_source/:id` | -            | Get document source by ID   |
+| `GET`  | `/api/export`             | Bearer token | Trigger manual full reindex |
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Examples
 
-## Support
+```bash
+# search
+curl -X POST http://localhost:3000/api/eden/_search \
+  -H "Content-Type: application/json" \
+  -d '{"query": {"match_all": {}}, "size": 10}'
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# get document by id
+curl http://localhost:3000/api/eden/_source/https%3A%2F%2Fdata.4tu.nl%2F
 
-## Stay in touch
+# trigger manual full reindex (requires AUTH_API_TOKEN)
+curl -H "Authorization: Bearer $AUTH_API_TOKEN" http://localhost:3000/api/export
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Configuration
 
-## License
+All environment variables are documented in `.env.example`. The main groups:
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **Core**
+- **Fuseki / RDF Delta**
+- **Elasticsearch**
+- **PostgreSQL**
+- **Redis**
+- **Auth**
+
+## Development
+
+```bash
+pnpm run test                    # run all tests
+npx jest /path/to/file.spec.ts   # run a single test
+pnpm run lint                    # eslint with auto-fix
+pnpm run format                  # prettier
+npx tsc --noEmit                 # typecheck
+make migrate                     # run prisma migrations
+```
