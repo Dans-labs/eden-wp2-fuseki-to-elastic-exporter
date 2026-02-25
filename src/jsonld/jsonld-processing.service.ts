@@ -30,7 +30,54 @@ export class JsonldProcessingService {
         ((flattened as FlattenedDocument)['@graph'] as JsonLdNode[]) ?? [];
     }
 
-    return this.embedBlankNodes(nodes);
+    return this.addBackReferences(this.embedBlankNodes(nodes));
+  }
+
+  // After flattening, URI references are collapsed to plain strings. Scan each
+  // document for string values that match another document's @id and add a
+  // synthetic _referencedBy array to the referenced document.
+  private addBackReferences(nodes: JsonLdNode[]): JsonLdNode[] {
+    const docIds = new Set(nodes.map((n) => n['@id'] as string));
+    const backRefs = new Map<string, string[]>();
+
+    for (const node of nodes) {
+      const parentId = node['@id'] as string;
+      this.collectUriReferences(node, docIds, parentId, backRefs);
+    }
+
+    return nodes.map((node) => {
+      const id = node['@id'] as string;
+      const refs = backRefs.get(id);
+      return refs?.length ? { ...node, _referencedBy: refs } : node;
+    });
+  }
+
+  private collectUriReferences(
+    value: unknown,
+    docIds: Set<string>,
+    parentId: string,
+    backRefs: Map<string, string[]>,
+  ): void {
+    if (typeof value === 'string') {
+      if (value !== parentId && docIds.has(value)) {
+        const existing = backRefs.get(value) ?? [];
+        if (!existing.includes(parentId)) {
+          backRefs.set(value, [...existing, parentId]);
+        }
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        this.collectUriReferences(item, docIds, parentId, backRefs);
+      }
+      return;
+    }
+    if (typeof value === 'object' && value !== null) {
+      for (const v of Object.values(value)) {
+        this.collectUriReferences(v, docIds, parentId, backRefs);
+      }
+    }
   }
 
   // Partition nodes into URI nodes (real entities) and blank nodes (anonymous),

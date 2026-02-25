@@ -304,5 +304,108 @@ describe('JsonldProcessingService', () => {
 
       expect(record['dct:conformsTo']).toBe('http://example.org/policy');
     });
+
+    it('should add _referencedBy when a document references another', async () => {
+      const document = {
+        '@context': {
+          dct: 'http://purl.org/dc/terms/',
+          dcat: 'http://www.w3.org/ns/dcat#',
+        },
+        '@graph': [
+          {
+            '@id': 'http://example.org/catalog',
+            '@type': 'dcat:Catalog',
+            'dcat:service': { '@id': 'http://example.org/service' },
+          },
+          {
+            '@id': 'http://example.org/service',
+            '@type': 'dcat:DataService',
+            'dct:title': 'My Service',
+          },
+        ],
+      };
+
+      const result = await service.flatten(document);
+
+      const svc = result.find((n) => n['@id'] === 'http://example.org/service');
+      expect(svc!['_referencedBy']).toEqual(['http://example.org/catalog']);
+    });
+
+    it('should collect multiple parents in _referencedBy', async () => {
+      const document = {
+        '@context': {
+          dct: 'http://purl.org/dc/terms/',
+          dcat: 'http://www.w3.org/ns/dcat#',
+        },
+        '@graph': [
+          {
+            '@id': 'http://example.org/catalog1',
+            '@type': 'dcat:Catalog',
+            'dct:conformsTo': { '@id': 'http://example.org/policy' },
+          },
+          {
+            '@id': 'http://example.org/catalog2',
+            '@type': 'dcat:Catalog',
+            'dct:conformsTo': { '@id': 'http://example.org/policy' },
+          },
+          {
+            '@id': 'http://example.org/policy',
+            '@type': 'dct:Policy',
+            'dct:title': 'Shared Policy',
+          },
+        ],
+      };
+
+      const result = await service.flatten(document);
+
+      const policy = result.find(
+        (n) => n['@id'] === 'http://example.org/policy',
+      );
+      expect(policy!['_referencedBy']).toHaveLength(2);
+      expect(policy!['_referencedBy']).toContain('http://example.org/catalog1');
+      expect(policy!['_referencedBy']).toContain('http://example.org/catalog2');
+    });
+
+    it('should not add _referencedBy for self-references', async () => {
+      const document = {
+        '@context': {
+          dct: 'http://purl.org/dc/terms/',
+          dcat: 'http://www.w3.org/ns/dcat#',
+        },
+        '@id': 'http://example.org/resource1',
+        '@type': 'dcat:CatalogRecord',
+        'dct:title': 'Test Resource',
+      };
+
+      const result = await service.flatten(document);
+
+      expect(result[0]['_referencedBy']).toBeUndefined();
+    });
+
+    it('should not add _referencedBy when no documents reference each other', async () => {
+      const document = {
+        '@context': {
+          dct: 'http://purl.org/dc/terms/',
+          dcat: 'http://www.w3.org/ns/dcat#',
+        },
+        '@graph': [
+          {
+            '@id': 'http://example.org/resource1',
+            '@type': 'dcat:CatalogRecord',
+            'dct:title': 'Resource 1',
+          },
+          {
+            '@id': 'http://example.org/resource2',
+            '@type': 'dcat:Catalog',
+            'dct:title': 'Resource 2',
+          },
+        ],
+      };
+
+      const result = await service.flatten(document);
+
+      expect(result[0]['_referencedBy']).toBeUndefined();
+      expect(result[1]['_referencedBy']).toBeUndefined();
+    });
   });
 });
